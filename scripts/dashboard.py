@@ -15,7 +15,7 @@ from scripts.run_baseline import smart_agent
 
 # Page Config
 st.set_page_config(
-    page_title="🏥 AI Hospital Dashboard",
+    page_title="AI Hospital Dashboard",
     page_icon="🏥",
     layout="wide",
 )

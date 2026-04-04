@@ -25,4 +25,9 @@ class HospitalEnv:
 
         reward, done = compute_reward(self.patient, action)
 
-        return None, reward, done, {}
+        next_state = None if done else self.state()
+
+        return next_state, reward, done, {
+            "true_priority": self.patient["true_priority"],
+            "true_department": self.patient["department"]
+        }

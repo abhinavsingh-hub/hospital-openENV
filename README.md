@@ -46,7 +46,8 @@ streamlit run scripts/dashboard.py
 ---
 
 ## UI Preview (Draft)
-![alt text](https://file%2B.vscode-resource.vscode-cdn.net/Users/abhinavsingh/Desktop/SS/Screenshot%202026-04-05%20at%205.25.47%E2%80%AFAM.png?version%3D1775347039430)
+<img width="1512" height="858" alt="Screenshot 2026-04-05 at 5 25 47 AM" src="https://github.com/user-attachments/assets/320e6b44-ee41-4d71-8a65-f5d4e812b7c1" />
+
 
 
 

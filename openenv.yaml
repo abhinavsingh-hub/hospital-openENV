@@ -25,11 +25,15 @@ tasks:
 
   - name: medium
     difficulty: medium
-    description: Predict department + priority
+    description: Predict correct department and priority
 
   - name: hard
     difficulty: hard
-    description: Full triage with penalties
+    description: Full triage with penalties for incorrect urgency
 
 reward:
   type: dense
+  description: >
+    +0.5 for correct priority,
+    +0.3 for correct department,
+    -0.5 if a critical patient is assigned low priority

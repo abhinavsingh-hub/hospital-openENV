@@ -16,7 +16,15 @@ action_space:
   type: dict
   fields:
     priority: int
-    department: string
+    department:
+      type: string
+      enum:
+        - cardiology
+        - neurology
+        - orthopedics
+        - pulmonology
+        - general
+        - emergency
 
 tasks:
   - name: easy

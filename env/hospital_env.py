@@ -26,7 +26,7 @@ class HospitalEnv:
     def reset(self):
         import random
 
-        # ✅ IMPORTANT CHANGE: pass task → enables multi-symptom in hard mode
+        # ✅ KEY CHANGE: pass task → enables easy/medium/hard behavior
         self.queue = [generate_patient(self.task) for _ in range(self.max_steps)]
         random.shuffle(self.queue)
 
@@ -41,7 +41,7 @@ class HospitalEnv:
     # 📊 CURRENT STATE
     def state(self):
         return {
-            "symptoms": self.patient["symptoms"],  # now list in hard mode
+            "symptoms": self.patient["symptoms"],  # list in medium & hard
             "age": self.patient["age"],
             "heart_rate": self.patient["heart_rate"],
             "blood_pressure": self.patient["blood_pressure"]
@@ -61,20 +61,20 @@ class HospitalEnv:
 
         self.current_step += 1
 
-        # ⚠️ STORE CURRENT PATIENT BEFORE MOVING AHEAD
+        # ⚠️ store current patient before moving
         current_patient = self.patient
 
-        # ✅ CHECK IF EPISODE DONE
+        # ✅ done condition
         done = (len(self.queue) == 0) or (self.current_step >= self.max_steps)
 
-        # 🔄 GET NEXT STATE
+        # 🔄 next state
         if not done:
             self.patient = self.queue.pop(0)
             next_state = self.state()
         else:
             next_state = None
 
-        # 📦 INFO
+        # 📦 info
         info = {
             "task": self.task,
             "true_seriousness": current_patient["true_seriousness"],

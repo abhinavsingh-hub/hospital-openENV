@@ -35,7 +35,10 @@ python3 -m pip install streamlit pydantic pandas
 ```bash
 streamlit run scripts/dashboard.py
 ```
-
+### 3. Launch the agent on CLI
+```bash
+.venv/bin/python -m scripts.run_baseline
+```
 ## 🧠 Dashboard Core Panels
 
 - **🏥 Hospital State**: Live view of bed availability, staff allocation progress, and the current patient queue.

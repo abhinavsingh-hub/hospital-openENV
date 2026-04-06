@@ -26,7 +26,8 @@ class HospitalEnv:
     def reset(self):
         import random
 
-        self.queue = [generate_patient() for _ in range(self.max_steps)]
+        # ✅ IMPORTANT CHANGE: pass task → enables multi-symptom in hard mode
+        self.queue = [generate_patient(self.task) for _ in range(self.max_steps)]
         random.shuffle(self.queue)
 
         self.current_step = 0
@@ -40,7 +41,7 @@ class HospitalEnv:
     # 📊 CURRENT STATE
     def state(self):
         return {
-            "symptoms": self.patient["symptoms"],
+            "symptoms": self.patient["symptoms"],  # now list in hard mode
             "age": self.patient["age"],
             "heart_rate": self.patient["heart_rate"],
             "blood_pressure": self.patient["blood_pressure"]
@@ -60,7 +61,7 @@ class HospitalEnv:
 
         self.current_step += 1
 
-        # ⚠️ STORE CURRENT PATIENT BEFORE MOVING AHEAD (IMPORTANT FIX)
+        # ⚠️ STORE CURRENT PATIENT BEFORE MOVING AHEAD
         current_patient = self.patient
 
         # ✅ CHECK IF EPISODE DONE
@@ -73,11 +74,11 @@ class HospitalEnv:
         else:
             next_state = None
 
-        # 📦 INFO (UPDATED → seriousness instead of priority)
+        # 📦 INFO
         info = {
             "task": self.task,
-            "true_seriousness": current_patient["true_seriousness"],  # ✅ FIXED
-            "true_department": current_patient["department"],        # ✅ FIXED
+            "true_seriousness": current_patient["true_seriousness"],
+            "true_department": current_patient["department"],
             "agent_action": action_dict,
             "accuracy": self.correct / self.total if self.total > 0 else 0
         }

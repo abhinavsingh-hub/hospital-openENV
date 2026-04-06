@@ -21,7 +21,12 @@ class HospitalEnv:
 
     # 🔄 RESET ENVIRONMENT
     def reset(self):
+        import random  # ✅ add here (or at top of file)
+
         self.queue = [generate_patient() for _ in range(self.max_steps)]
+
+        random.shuffle(self.queue)  # ✅ SHUFFLE HERE
+
         self.current_step = 0
 
         self.patient = self.queue.pop(0)

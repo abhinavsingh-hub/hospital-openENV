@@ -24,7 +24,7 @@ Q = defaultdict(lambda: [0] * len(ACTIONS))
 # 🔑 Improved state representation
 def state_to_key(state):
     return (
-        hash(state["symptoms"]) % 10,   # compress symptoms
+        tuple(sorted(state["symptoms"])),   # ✅ FIX HERE
         state["age"] // 10,
         state["heart_rate"] // 10,
         state["blood_pressure"] // 10
@@ -140,7 +140,7 @@ if __name__ == "__main__":
     env = HospitalEnv(task="hard", max_steps=20)
 
     print("🚀 Training started...\n")
-    train(env, episodes=5)   # 🔥 important
+    train(env, episodes=500)   # 🔥 important
 
     print("\n🧪 Testing trained agent...\n")
     test(env)

@@ -2,7 +2,7 @@ import random
 random.seed(42)
 
 from env.hospital_env import HospitalEnv
-from env.tasks import grade_easy, grade_medium, grade_hard
+from env.tasks import easy_task_reward, medium_task_reward, hard_task_reward
 
 # 🧠 Smart Agent (rule-based)
 def smart_agent(state):

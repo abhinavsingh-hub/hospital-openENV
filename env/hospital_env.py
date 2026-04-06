@@ -24,11 +24,10 @@ class HospitalEnv:
 
     # 🔄 RESET ENVIRONMENT
     def reset(self):
-        import random  # ✅ add here (or at top of file)
+        import random
 
         self.queue = [generate_patient() for _ in range(self.max_steps)]
-
-        random.shuffle(self.queue)  # ✅ SHUFFLE HERE
+        random.shuffle(self.queue)
 
         self.current_step = 0
         self.correct = 0
@@ -49,15 +48,20 @@ class HospitalEnv:
 
     # 🎯 STEP FUNCTION (CORE LOGIC)
     def step(self, action_dict):
-        # Convert dict → Action object
         action = Action(**action_dict)
 
-        # 🧠 SELECT REWARD BASED ON TASK
+        # 🧠 Compute reward
         reward = self._get_reward(self.patient, action.__dict__)
+
+        # ✅ Accuracy tracking (department-based)
         if action_dict["department"] == self.patient["department"]:
             self.correct += 1
         self.total += 1
+
         self.current_step += 1
+
+        # ⚠️ STORE CURRENT PATIENT BEFORE MOVING AHEAD (IMPORTANT FIX)
+        current_patient = self.patient
 
         # ✅ CHECK IF EPISODE DONE
         done = (len(self.queue) == 0) or (self.current_step >= self.max_steps)
@@ -69,13 +73,12 @@ class HospitalEnv:
         else:
             next_state = None
 
-        # 📦 INFO (VERY IMPORTANT FOR DEBUGGING & TRAINING)
+        # 📦 INFO (UPDATED → seriousness instead of priority)
         info = {
             "task": self.task,
-            "true_priority": self.patient["true_priority"] if not done else None,
-            "true_department": self.patient["department"] if not done else None,
+            "true_seriousness": current_patient["true_seriousness"],  # ✅ FIXED
+            "true_department": current_patient["department"],        # ✅ FIXED
             "agent_action": action_dict,
-
             "accuracy": self.correct / self.total if self.total > 0 else 0
         }
 

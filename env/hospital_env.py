@@ -1,7 +1,6 @@
 from env.models import Action
 from env.generator import generate_patient
 
-# 👉 Import your task-specific reward functions
 from env.tasks import (
     easy_task_reward,
     medium_task_reward,
@@ -26,7 +25,6 @@ class HospitalEnv:
     def reset(self):
         import random
 
-        # ✅ KEY CHANGE: pass task → enables easy/medium/hard behavior
         self.queue = [generate_patient(self.task) for _ in range(self.max_steps)]
         random.shuffle(self.queue)
 
@@ -38,49 +36,78 @@ class HospitalEnv:
 
         return self.state()
 
-    # 📊 CURRENT STATE
-    def state(self):
+    # 🧠 FEATURE ENGINEERING (CRITICAL)
+    def _compute_risk(self, patient):
         return {
-            "symptoms": self.patient["symptoms"],  # list in medium & hard
-            "age": self.patient["age"],
-            "heart_rate": self.patient["heart_rate"],
-            "blood_pressure": self.patient["blood_pressure"]
+            "high_heart_rate": patient["heart_rate"] > 120,
+            "low_blood_pressure": patient["blood_pressure"] < 90,
+            "elderly": patient["age"] > 65
         }
 
-    # 🎯 STEP FUNCTION (CORE LOGIC)
+    # 📊 CURRENT STATE
+    def state(self):
+        risk = self._compute_risk(self.patient)
+
+        return {
+            "symptoms": self.patient["symptoms"],
+            "age": self.patient["age"] / 100,  # normalize
+            "heart_rate": self.patient["heart_rate"] / 200,
+            "blood_pressure": self.patient["blood_pressure"] / 200,
+
+            # 🔥 NEW FEATURES
+            "risk": risk,
+            "difficulty": self.task,
+
+            # optional learning signal
+            "progress": self.current_step / self.max_steps
+        }
+
+    # ✅ VALIDATE ACTION
+    def _validate_action(self, action_dict):
+        required_keys = ["severity", "department"]
+
+        for key in required_keys:
+            if key not in action_dict:
+                raise ValueError(f"Missing key in action: {key}")
+
+    # 🎯 STEP FUNCTION
     def step(self, action_dict):
+        self._validate_action(action_dict)
+
         action = Action(**action_dict)
 
-        # 🧠 Compute reward
+        # 🧠 base reward
         reward = self._get_reward(self.patient, action.__dict__)
 
-        # ✅ Accuracy tracking (department-based)
+        # 🔥 EXTRA REWARD SHAPING
         if action_dict["department"] == self.patient["department"]:
+            reward += 1
             self.correct += 1
-        self.total += 1
+        else:
+            reward -= 1
 
+        self.total += 1
         self.current_step += 1
 
-        # ⚠️ store current patient before moving
         current_patient = self.patient
 
-        # ✅ done condition
         done = (len(self.queue) == 0) or (self.current_step >= self.max_steps)
 
-        # 🔄 next state
         if not done:
             self.patient = self.queue.pop(0)
             next_state = self.state()
         else:
             next_state = None
 
-        # 📦 info
+        # 📦 INFO (VERY IMPORTANT FOR DEBUGGING)
         info = {
             "task": self.task,
             "true_seriousness": current_patient["true_seriousness"],
             "true_department": current_patient["department"],
             "agent_action": action_dict,
-            "accuracy": self.correct / self.total if self.total > 0 else 0
+            "accuracy": self.correct / self.total if self.total > 0 else 0,
+            "step": self.current_step,
+            "reward": reward
         }
 
         return next_state, reward, done, info

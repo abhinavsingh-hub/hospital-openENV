@@ -40,6 +40,30 @@ def safe_parse(text):
 
 
 # ==============================
+# 🧠 FALLBACK POLICY
+# ==============================
+def fallback_policy(state):
+    symptoms = " ".join(state["symptoms"]).lower()
+
+    if "unconscious" in symptoms or "severe bleeding" in symptoms:
+        return {"department": "emergency", "seriousness": 5}
+
+    if "chest pain" in symptoms or "palpitations" in symptoms:
+        return {"department": "cardiology", "seriousness": 4}
+
+    if "shortness of breath" in symptoms or "cough" in symptoms:
+        return {"department": "pulmonology", "seriousness": 3}
+
+    if "head injury" in symptoms or "dizziness" in symptoms:
+        return {"department": "neurology", "seriousness": 3}
+
+    if "fracture" in symptoms:
+        return {"department": "orthopedics", "seriousness": 3}
+
+    return {"department": "general", "seriousness": 2}
+
+
+# ==============================
 # 🤖 LLM decision
 # ==============================
 def ask_llm(state):
@@ -97,35 +121,10 @@ Return ONLY JSON:
         text = (response.choices[0].message.content or "").strip()
         return safe_parse(text)
 
-        def fallback_policy(state):
-        symptoms = " ".join(state["symptoms"]).lower()
-
-        # 🚨 emergency cases
-        if "unconscious" in symptoms or "severe bleeding" in symptoms:
-            return {"department": "emergency", "seriousness": 5}
-
-        # ❤️ cardiology
-        if "chest pain" in symptoms or "palpitations" in symptoms:
-            return {"department": "cardiology", "seriousness": 4}
-
-        # 🫁 lungs
-        if "shortness of breath" in symptoms or "cough" in symptoms:
-            return {"department": "pulmonology", "seriousness": 3}
-
-        # 🧠 neuro
-        if "head injury" in symptoms or "dizziness" in symptoms:
-            return {"department": "neurology", "seriousness": 3}
-
-        # 🦴 bones
-        if "fracture" in symptoms:
-            return {"department": "orthopedics", "seriousness": 3}
-
-        # 🟢 default
-        return {"department": "general", "seriousness": 2}
-
     except Exception as e:
         print(f"[DEBUG] LLM error: {e}", flush=True)
         return fallback_policy(state)
+
 
 # ==============================
 # 🚀 MAIN LOOP

@@ -7,9 +7,15 @@ from env.hospital_env import HospitalEnv
 # ==============================
 # 🔑 Setup client
 # ==============================
+base_url = os.getenv("API_BASE_URL")
+api_key = os.getenv("HF_TOKEN")
+
+if not base_url or not api_key:
+    raise ValueError("Missing environment variables")
+
 client = OpenAI(
-    base_url=os.getenv("API_BASE_URL").strip(),
-    api_key=os.getenv("HF_TOKEN").strip(),
+    base_url=base_url,
+    api_key=api_key,
 )
 
 MODEL_NAME = os.getenv("MODEL_NAME")

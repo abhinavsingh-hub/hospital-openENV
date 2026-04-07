@@ -8,7 +8,7 @@ import time
 # keep container alive for HF
 while True:
     time.sleep(60)
-
+print("DEBUG: inference started", flush=True)
 # ==============================
 # 🔑 Setup client
 # ==============================

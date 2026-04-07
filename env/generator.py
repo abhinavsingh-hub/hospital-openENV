@@ -1,7 +1,7 @@
 import random
+from env.models import Patient
 
 
-# ✅ Only keep symptom names (no fixed department mapping here)
 SYMPTOMS = [
     "chest pain",
     "head injury",
@@ -17,24 +17,22 @@ SYMPTOMS = [
 
 
 # =========================================================
-# 🧠 DEPARTMENT DECISION (CORE LOGIC)
+# 🧠 DEPARTMENT DECISION
 # =========================================================
 def get_department(symptoms):
 
-    # ensure list
     if isinstance(symptoms, str):
         symptoms = [symptoms]
 
     symptoms = [s.lower() for s in symptoms]
 
-    # 🔥 STEP 1: ABSOLUTE PRIORITY (CRITICAL CASES)
+    # 🔥 CRITICAL PRIORITY
     if any(s in ["unconscious", "severe bleeding"] for s in symptoms):
         return "emergency"
 
     if "chest pain" in symptoms and "shortness of breath" in symptoms:
         return "cardiology"
 
-    # 🧠 STEP 2: MULTI-SYMPTOM SCORING
     dept_scores = {
         "cardiology": 0,
         "pulmonology": 0,
@@ -45,7 +43,6 @@ def get_department(symptoms):
     }
 
     for s in symptoms:
-
         if "chest pain" in s:
             dept_scores["cardiology"] += 3
 
@@ -67,7 +64,6 @@ def get_department(symptoms):
         if "fever" in s:
             dept_scores["general"] += 2
 
-    # small bias toward general
     dept_scores["general"] += 1
 
     return max(dept_scores, key=dept_scores.get)
@@ -78,7 +74,7 @@ def get_department(symptoms):
 # =========================================================
 def generate_patient(task="easy"):
 
-    # 🔁 STEP 1: Select symptoms based on difficulty
+    # 🎯 STEP 1: Symptoms based on difficulty
     if task == "easy":
         symptoms = [random.choice(SYMPTOMS)]
 
@@ -91,40 +87,46 @@ def generate_patient(task="easy"):
     else:
         raise ValueError("Invalid task level")
 
-    # 🔥 Optional: increase emergency cases (better training)
-    if random.random() < 0.2:
+    # 🔥 FIXED: reduce emergency bias
+    if random.random() < 0.1:
         symptoms = ["unconscious"]
 
-    # 🧠 STEP 2: Assign department using unified logic
+    # 🧠 STEP 2: Department
     department = get_department(symptoms)
 
-    # 🧍 STEP 3: Create patient
-    patient = {
-        "symptoms": symptoms,  # ✅ always a list
-        "age": random.randint(20, 80),
-        "heart_rate": random.randint(60, 140),
-        "blood_pressure": random.randint(80, 160),
-        "department": department
-    }
+    # 🎯 STEP 3: Difficulty-based vitals
+    if task == "easy":
+        age = random.randint(20, 50)
+        heart_rate = random.randint(60, 100)
+        blood_pressure = random.randint(100, 140)
+
+    elif task == "medium":
+        age = random.randint(20, 70)
+        heart_rate = random.randint(60, 120)
+        blood_pressure = random.randint(90, 140)
+
+    else:  # hard
+        age = random.randint(10, 90)
+        heart_rate = random.randint(60, 150)
+        blood_pressure = random.randint(80, 160)
 
     # =========================================================
-    # 🧠 STEP 4: SERIOUSNESS SCORING (MATCH INFERENCE)
+    # 🧠 SERIOUSNESS SCORING
     # =========================================================
+    score = 1
 
-    score = 1  # base
-
-    # 🔴 Vital-based scoring
-    if patient["heart_rate"] > 120:
+    # 🔴 Vitals
+    if heart_rate > 120:
         score += 2
-    elif patient["heart_rate"] > 100:
+    elif heart_rate > 100:
         score += 1
 
-    if patient["blood_pressure"] < 90:
+    if blood_pressure < 90:
         score += 2
-    elif patient["blood_pressure"] < 100:
+    elif blood_pressure < 100:
         score += 1
 
-    # 🧠 Symptom-based scoring (multi-symptom aware)
+    # 🧠 Symptoms
     for symptom in symptoms:
         if symptom in ["unconscious", "severe bleeding"]:
             score += 3
@@ -134,14 +136,23 @@ def generate_patient(task="easy"):
             score += 2
         elif symptom in ["fracture"]:
             score += 1
-        elif symptom in ["fever"]:
-            score += 0
 
-    # 👶 Age-based risk
-    if patient["age"] > 65:
+    # 👶 Age
+    if age > 65:
         score += 1
 
-    # ✅ Final seriousness (1–5 scale)
-    patient["true_seriousness"] = min(5, score)
+    seriousness = min(5, score)
 
-    return patient
+    # 🔥 ALIGNMENT FIX (IMPORTANT)
+    if department == "emergency":
+        seriousness = max(seriousness, 4)
+
+    # ✅ RETURN AS MODEL (NOT DICT)
+    return Patient(
+        symptoms=symptoms,
+        age=age,
+        heart_rate=heart_rate,
+        blood_pressure=blood_pressure,
+        department=department,
+        true_seriousness=seriousness
+    )

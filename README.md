@@ -57,6 +57,14 @@ streamlit run scripts/dashboard.py
 
 ---
 
+## Hugging-Face link 
+
+https://huggingface.co/spaces/abhinavvsingh/vaats
+
+## Docker container ID 
+
+e33b36d2810c3201754dc48d92c8c9eb1d08fe7b8c2f82a1d56ff5be57bfbcac
+
 ## UI Preview (Draft)
 <img width="1512" height="858" alt="Screenshot 2026-04-05 at 5 25 47 AM" src="https://github.com/user-attachments/assets/320e6b44-ee41-4d71-8a65-f5d4e812b7c1" />
 

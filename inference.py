@@ -1,4 +1,3 @@
-print("DEBUG: inference started", flush=True)
 import os
 import json
 from openai import OpenAI

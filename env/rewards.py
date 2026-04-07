@@ -1,12 +1,12 @@
 # # 🟢 EASY → department only
 # def grade_easy(patient, action):
-#     return 1.0 if action["department"] == patient["department"] else 0.0
+#     return 1.0 if action["department"] == patient.department else 0.0
 
 
 # # 🟡 MEDIUM → department + priority
 # def grade_medium(patient, action):
 #     if (
-#         action["department"] == patient["department"]
+#         action["department"] == patient.department
 #         and action["priority"] == patient["true_priority"]
 #     ):
 #         return 1.0
@@ -17,7 +17,7 @@
 # def grade_hard(patient, action):
 #     score = 0.0
 
-#     if action["department"] == patient["department"]:
+#     if action["department"] == patient.department:
 #         score += 0.3
 
 #     if action["priority"] == patient["true_priority"]:
@@ -31,10 +31,10 @@
 def compute_reward(patient, action):
     reward = 0.0
 
-    true_ser = patient["true_seriousness"]
+    true_ser = patient.true_seriousness
     pred_ser = action["seriousness"]
 
-    true_dep = patient["department"]
+    true_dep = patient.department
     pred_dep = action["department"]
 
     # 🎯 1. Seriousness reward (with gradient)

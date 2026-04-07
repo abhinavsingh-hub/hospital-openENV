@@ -36,12 +36,12 @@ class HospitalEnv:
 
         return self.state()
 
-    # 🧠 FEATURE ENGINEERING (CRITICAL)
+    # 🧠 FEATURE ENGINEERING
     def _compute_risk(self, patient):
         return {
-            "high_heart_rate": patient["heart_rate"] > 120,
-            "low_blood_pressure": patient["blood_pressure"] < 90,
-            "elderly": patient["age"] > 65
+            "high_heart_rate": patient.heart_rate > 120,
+            "low_blood_pressure": patient.blood_pressure < 90,
+            "elderly": patient.age > 65
         }
 
     # 📊 CURRENT STATE
@@ -49,23 +49,20 @@ class HospitalEnv:
         risk = self._compute_risk(self.patient)
 
         return {
-            "symptoms": self.patient["symptoms"],
-            "age": self.patient["age"] / 100,  # normalize
-            "heart_rate": self.patient["heart_rate"] / 200,
-            "blood_pressure": self.patient["blood_pressure"] / 200,
+            "symptoms": self.patient.symptoms,
+            "age": self.patient.age / 100,  # normalize
+            "heart_rate": self.patient.heart_rate / 200,
+            "blood_pressure": self.patient.blood_pressure / 200,
 
-            # 🔥 NEW FEATURES
+            # 🔥 important features
             "risk": risk,
             "difficulty": self.task,
-
-            # optional learning signal
             "progress": self.current_step / self.max_steps
         }
 
     # ✅ VALIDATE ACTION
     def _validate_action(self, action_dict):
-        required_keys = ["severity", "department"]
-
+        required_keys = ["seriousness", "department"]
         for key in required_keys:
             if key not in action_dict:
                 raise ValueError(f"Missing key in action: {key}")
@@ -76,11 +73,11 @@ class HospitalEnv:
 
         action = Action(**action_dict)
 
-        # 🧠 base reward
-        reward = self._get_reward(self.patient, action.__dict__)
+        # 🧠 reward
+        reward = self._get_reward(self.patient, action.model_dump())
 
-        # 🔥 EXTRA REWARD SHAPING
-        if action_dict["department"] == self.patient["department"]:
+        # 🔥 reward shaping
+        if action_dict["department"] == self.patient.department:
             reward += 1
             self.correct += 1
         else:
@@ -99,11 +96,10 @@ class HospitalEnv:
         else:
             next_state = None
 
-        # 📦 INFO (VERY IMPORTANT FOR DEBUGGING)
         info = {
             "task": self.task,
-            "true_seriousness": current_patient["true_seriousness"],
-            "true_department": current_patient["department"],
+            "true_seriousness": current_patient.true_seriousness,
+            "true_department": current_patient.department,
             "agent_action": action_dict,
             "accuracy": self.correct / self.total if self.total > 0 else 0,
             "step": self.current_step,

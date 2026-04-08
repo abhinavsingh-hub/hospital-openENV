@@ -9,7 +9,10 @@ env = HospitalEnv(task="easy", max_steps=1)
 
 @app.get("/")
 def home():
-    return {"status": "ok"}
+    return {
+        "message": "Smart Hospital OpenEnv is running 🚀",
+        "endpoint": "/reset"
+    }
 
 
 @app.post("/reset")

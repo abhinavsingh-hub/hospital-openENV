@@ -1,11 +1,11 @@
-from logging import info
-
 from env.hospital_env import HospitalEnv
 import random
 from collections import defaultdict
 import pickle
 
-# All possible actions
+# ==============================
+# 🎯 ACTION SPACE
+# ==============================
 DEPARTMENTS = [
     "cardiology",
     "neurology",
@@ -19,29 +19,26 @@ SERIOUSNESS = [1, 2, 3, 4, 5]
 
 ACTIONS = [(d, s) for d in DEPARTMENTS for s in SERIOUSNESS]
 
-
-# Q-Table
+# ==============================
+# 🧠 Q-TABLE
+# ==============================
 Q = defaultdict(lambda: [0] * len(ACTIONS))
 
-
-# Improved state representation
+# ==============================
+# 🔑 STATE ENCODING
+# ==============================
 def state_to_key(state):
     symptoms = tuple(sorted(state["symptoms"]))
 
-    # 🔥 risk-based abstraction
     high_hr = state["heart_rate"] > 0.6
     low_bp = state["blood_pressure"] < 0.5
     elderly = state["age"] > 0.6
 
-    return (
-        symptoms,
-        high_hr,
-        low_bp,
-        elderly
-    )
+    return (symptoms, high_hr, low_bp, elderly)
 
-
-# epsilon-greedy action selection
+# ==============================
+# 🎯 ACTION SELECTION
+# ==============================
 def choose_action(state, epsilon):
     key = state_to_key(state)
 
@@ -53,11 +50,10 @@ def choose_action(state, epsilon):
 
     return ACTIONS[action_idx], action_idx
 
-
-# TRAINING LOOP
+# ==============================
+# 🔁 TRAINING LOOP
+# ==============================
 def train(env, episodes=500):
-    # save_q_table()
-
     alpha = 0.2
     gamma = 0.95
 
@@ -71,9 +67,9 @@ def train(env, episodes=500):
 
         total_reward = 0
 
-        # ✅ accuracy tracking
         correct_department = 0
         correct_seriousness = 0
+        correct_queue = 0
         total = 0
         total_score = 0
 
@@ -92,21 +88,19 @@ def train(env, episodes=500):
             total += 1
             total_reward += reward
 
-            # 🔥 stronger learning from mistakes
-            # if reward < 0:
-            #     reward *= 2
-
-            # ✅ correct evaluation (NOT using env accuracy)
             dept_correct = action_dict["department"] == info["true_department"]
             ser_correct = action_dict["seriousness"] == info["true_seriousness"]
+            queue_correct = info["queue_correct"]
 
             if dept_correct:
                 correct_department += 1
-
             if ser_correct:
                 correct_seriousness += 1
+            if queue_correct:
+                correct_queue += 1
 
-            step_score = (dept_correct + ser_correct) / 2
+            # 🔥 NEW: include queue in score
+            step_score = (dept_correct + ser_correct + queue_correct) / 3
             total_score += step_score
 
             # 🧠 Q-learning update
@@ -125,12 +119,14 @@ def train(env, episodes=500):
             f"Episode {ep+1} | Reward: {total_reward:.2f} | "
             f"Dept Acc: {correct_department/total:.2f} | "
             f"Ser Acc: {correct_seriousness/total:.2f} | "
+            f"Queue Acc: {correct_queue/total:.2f} | "
             f"Overall: {total_score/total:.2f} | "
             f"Epsilon: {epsilon:.2f}"
         )
 
-
-# TEST FUNCTION
+# ==============================
+# 🧪 TEST FUNCTION
+# ==============================
 def test(env):
     state = env.reset()
     done = False
@@ -138,6 +134,7 @@ def test(env):
 
     correct_department = 0
     correct_seriousness = 0
+    correct_queue = 0
     total = 0
     total_score = 0
 
@@ -164,20 +161,22 @@ def test(env):
         print(f"Department: {action['department']}")
         print(f"Seriousness: {action['seriousness']}")
 
-        # ✅ TAKE STEP FIRST
+        # 👉 take step
         state, reward, done, info = env.step(action)
 
-        # ✅ NOW PRINT QUEUE (correct position)
-        print("\n🏥 SELECTED DEPARTMENT QUEUE:")
+        # 👉 show ONLY selected department queue
         selected_dept = action["department"]
         q_info = info["queue_status"].get(selected_dept, {
-        "total": 0,
-        "seriousness_levels": []
-    })
+            "total": 0,
+            "seriousness_levels": []
+        })
+
+        print("\n🏥 SELECTED DEPARTMENT QUEUE:")
         print(f"{selected_dept}: {q_info['total']} | Severity: {q_info['seriousness_levels']}")
 
         dept_correct = action["department"] == info["true_department"]
         ser_correct = action["seriousness"] == info["true_seriousness"]
+        queue_correct = info["queue_correct"]
 
         total += 1
 
@@ -185,8 +184,10 @@ def test(env):
             correct_department += 1
         if ser_correct:
             correct_seriousness += 1
+        if queue_correct:
+            correct_queue += 1
 
-        step_score = (dept_correct + ser_correct) / 2
+        step_score = (dept_correct + ser_correct + queue_correct) / 3
         total_score += step_score
 
         print(f"\nREWARD: {reward}")
@@ -194,35 +195,40 @@ def test(env):
         print(f"TRUE SERIOUSNESS: {info['true_seriousness']}")
         print(f"Dept Correct: {dept_correct}")
         print(f"Seriousness Correct: {ser_correct}")
+        print(f"Queue Correct: {queue_correct}")
         print(f"STEP ACCURACY: {step_score:.2f}")
         print(f"RUNNING ACCURACY: {total_score/total:.2f}")
         print("-" * 40)
 
         step_num += 1
 
-    # ✅ FINAL SUMMARY
+    # ==============================
+    # 📊 FINAL RESULTS
+    # ==============================
     print("\n📊 FINAL RESULTS:")
     print(f"Department Accuracy: {correct_department/total:.2f}")
     print(f"Seriousness Accuracy: {correct_seriousness/total:.2f}")
+    print(f"Queue Accuracy: {correct_queue/total:.2f}")
     print(f"Overall Accuracy: {total_score/total:.2f}")
 
-
-# MAIN
+# ==============================
+# 🚀 MAIN
+# ==============================
 if __name__ == "__main__":
-
     env = HospitalEnv(task="hard", max_steps=10)
 
     print("🚀 Training started...\n")
     train(env, episodes=5000)
 
-    print("\nTesting trained agent...\n")
+    print("\n🧪 Testing trained agent...\n")
     test(env)
 
-# RL AGENT (for inference/UI)
+# ==============================
+# 🤖 RL AGENT (FOR UI / API)
+# ==============================
 def rl_agent(state):
     key = state_to_key(state)
 
-    # fallback if unseen state
     if key not in Q:
         from inference import get_action
         return get_action(state)
@@ -237,8 +243,9 @@ def rl_agent(state):
         "seriousness": ser
     }
 
-# LOAD Q TABLE
-
+# ==============================
+# 💾 SAVE / LOAD Q TABLE
+# ==============================
 def save_q_table(filename="q_table.pkl"):
     with open(filename, "wb") as f:
         pickle.dump(dict(Q), f)

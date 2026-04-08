@@ -41,9 +41,9 @@ def hard_task_reward(patient, action):
     true = patient.true_seriousness
     pred = action["seriousness"]
 
-    # =========================
-    # 🎯 Department (high weight)
-    # =========================
+   
+    # Department (high weight)
+   
     if action["department"] == patient.department:
         reward += 1.5
     else:

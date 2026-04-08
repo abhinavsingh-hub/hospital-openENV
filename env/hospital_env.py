@@ -21,7 +21,7 @@ class HospitalEnv:
         self.correct = 0
         self.total = 0
 
-    # 🔄 RESET ENVIRONMENT
+    # RESET ENVIRONMENT
     def reset(self):
         import random
 
@@ -36,7 +36,7 @@ class HospitalEnv:
 
         return self.state()
 
-    # 🧠 FEATURE ENGINEERING
+    # FEATURE ENGINEERING
     def _compute_risk(self, patient):
         return {
             "high_heart_rate": patient.heart_rate > 120,
@@ -44,7 +44,7 @@ class HospitalEnv:
             "elderly": patient.age > 65
         }
 
-    # 📊 CURRENT STATE
+    # CURRENT STATE
     def state(self):
         risk = self._compute_risk(self.patient)
 
@@ -60,23 +60,21 @@ class HospitalEnv:
             "progress": self.current_step / self.max_steps
         }
 
-    # ✅ VALIDATE ACTION
+    # VALIDATE ACTION
     def _validate_action(self, action_dict):
         required_keys = ["seriousness", "department"]
         for key in required_keys:
             if key not in action_dict:
                 raise ValueError(f"Missing key in action: {key}")
 
-    # 🎯 STEP FUNCTION
+    # STEP FUNCTION
     def step(self, action_dict):
         self._validate_action(action_dict)
 
         action = Action(**action_dict)
 
-        # 🧠 reward
+        # reward
         reward = self._get_reward(self.patient, action.model_dump())
-
-        # 🔥 reward shaping
         if action_dict["department"] == self.patient.department:
             reward += 1
             self.correct += 1
@@ -108,7 +106,7 @@ class HospitalEnv:
 
         return next_state, reward, done, info
 
-    # 🧠 REWARD ROUTER
+    # REWARD ROUTER
     def _get_reward(self, patient, action):
         if self.task == "easy":
             return easy_task_reward(patient, action)

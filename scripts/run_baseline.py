@@ -3,7 +3,7 @@ import random
 from collections import defaultdict
 import pickle
 
-# 🎯 All possible actions
+# All possible actions
 DEPARTMENTS = [
     "cardiology",
     "neurology",
@@ -18,11 +18,11 @@ SERIOUSNESS = [1, 2, 3, 4, 5]
 ACTIONS = [(d, s) for d in DEPARTMENTS for s in SERIOUSNESS]
 
 
-# 🧠 Q-Table
+# Q-Table
 Q = defaultdict(lambda: [0] * len(ACTIONS))
 
 
-# 🔑 Improved state representation
+# Improved state representation
 def state_to_key(state):
     symptoms = tuple(sorted(state["symptoms"]))
 
@@ -39,7 +39,7 @@ def state_to_key(state):
     )
 
 
-# 🎯 epsilon-greedy action selection
+# epsilon-greedy action selection
 def choose_action(state, epsilon):
     key = state_to_key(state)
 
@@ -52,7 +52,7 @@ def choose_action(state, epsilon):
     return ACTIONS[action_idx], action_idx
 
 
-# 🔁 TRAINING LOOP (FIXED ACCURACY)
+# TRAINING LOOP
 def train(env, episodes=500):
     # save_q_table()
 
@@ -128,7 +128,7 @@ def train(env, episodes=500):
         )
 
 
-# 🧪 TEST FUNCTION (FIXED OUTPUT)
+# TEST FUNCTION
 def test(env):
     state = env.reset()
     done = False
@@ -190,7 +190,7 @@ def test(env):
         step_num += 1
 
 
-# 🚀 MAIN
+# MAIN
 if __name__ == "__main__":
 
     env = HospitalEnv(task="hard", max_steps=10)
@@ -198,12 +198,10 @@ if __name__ == "__main__":
     print("🚀 Training started...\n")
     train(env, episodes=5000)
 
-    print("\n🧪 Testing trained agent...\n")
+    print("\nTesting trained agent...\n")
     test(env)
 
-    # ==============================
-# 🤖 RL AGENT (for inference/UI)
-# ==============================
+# RL AGENT (for inference/UI)
 def rl_agent(state):
     key = state_to_key(state)
 
@@ -222,9 +220,7 @@ def rl_agent(state):
         "seriousness": ser
     }
 
-    # ==============================
-# 💾 SAVE / LOAD Q TABLE
-# ==============================
+# LOAD Q TABLE
 
 def save_q_table(filename="q_table.pkl"):
     with open(filename, "wb") as f:

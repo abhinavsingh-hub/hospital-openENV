@@ -19,17 +19,17 @@ def compute_reward(patient, action):
     else:
         reward -= 0.5   # far off
 
-    # 🏥 2. Department reward (stronger signal)
+    # Department reward 
     if pred_dep == true_dep:
         reward += 1.0
     else:
         reward -= 0.5
 
-    # 🚨 3. Critical mistake penalty (VERY IMPORTANT)
+    # Critical mistake penalty
     if true_ser >= 4 and pred_ser <= 2:
         reward -= 1.0
 
-    # 🧠 4. Bonus for perfect prediction
+    # Bonus for perfect prediction
     if pred_ser == true_ser and pred_dep == true_dep:
         reward += 0.5
 

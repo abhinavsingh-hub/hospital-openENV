@@ -9,7 +9,7 @@ COPY . .
 # Install dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Set environment variables (can be overridden)
+# Set environment variables
 ENV PYTHONUNBUFFERED=1
 
 # Default command

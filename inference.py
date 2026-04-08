@@ -4,22 +4,25 @@ import time
 from openai import OpenAI
 from env.hospital_env import HospitalEnv
 
-# Setup client
-base_url = os.getenv("API_BASE_URL")
-api_key = os.getenv("HF_TOKEN")
+#  ENV SETUP
+API_BASE_URL = os.getenv("API_BASE_URL")
+MODEL_NAME = os.getenv("MODEL_NAME")
+API_KEY = os.getenv("HF_TOKEN")
 
-if not base_url or not api_key:
-    raise ValueError("Missing environment variables")
+if not API_BASE_URL or not MODEL_NAME or not API_KEY:
+    raise ValueError("Missing required environment variables")
 
 client = OpenAI(
-    base_url=base_url,
-    api_key=api_key,
+    base_url=API_BASE_URL,
+    api_key=API_KEY,
 )
 
-MODEL_NAME = os.getenv("MODEL_NAME")
+TASK_NAME = "hospital-triage"
+BENCHMARK = "hospital-env"
+MAX_STEPS = 10
 
 
-# JSON extraction
+# SAFE JSON PARSER
 def safe_parse(text):
     try:
         return json.loads(text)
@@ -57,35 +60,23 @@ def fallback_policy(state):
     return {"department": "general", "seriousness": 2}
 
 
-# LLM decision
+# LLM DECISION
 def ask_llm(state):
     prompt = f"""
     You are a STRICT hospital triage system.
 
-    You MUST follow these rules EXACTLY:
+    CRITICAL RULES:
+    - If unconscious OR severe bleeding → emergency, seriousness 5
+    - chest pain + shortness of breath → cardiology, seriousness 5
 
-    CRITICAL RULES (highest priority):
-    - If "unconscious" OR "severe bleeding" → department = emergency, seriousness = 5
-    - If BOTH "chest pain" AND "shortness of breath" → department = cardiology, seriousness = 5
-
-    DEPARTMENT RULES:
-    - chest pain OR palpitations → cardiology
-    - shortness of breath OR cough → pulmonology
-    - head injury OR dizziness → neurology
+    DEPARTMENTS:
+    - chest pain → cardiology
+    - breathing issues → pulmonology
+    - head injury → neurology
     - fracture → orthopedics
-    - fever → general
 
-    SCORING PRIORITY:
-    - Emergency overrides EVERYTHING
-    - Multi-symptom conflicts → choose MOST SEVERE condition
-    - If multiple serious symptoms → increase seriousness
-
-    SERIOUSNESS RULES:
-    - 5 → life-threatening (unconscious, bleeding, chest pain + breath)
-    - 4 → severe (fracture + other symptoms, strong vitals)
-    - 3 → moderate
-    - 2 → mild
-    - 1 → very mild
+    SERIOUSNESS:
+    5 = critical, 4 = severe, 3 = moderate, 2 = mild
 
     Patient:
     Symptoms: {state['symptoms']}
@@ -95,8 +86,8 @@ def ask_llm(state):
 
     Return ONLY JSON:
     {{
-    "department": "...",
-    "seriousness": <1-5>
+      "department": "...",
+      "seriousness": <1-5>
     }}
     """
 
@@ -117,43 +108,84 @@ def ask_llm(state):
 
 # MAIN LOOP
 def run():
-    env = HospitalEnv(task="hard", max_steps=10)
+    env = HospitalEnv(task="hard", max_steps=MAX_STEPS)
 
-    print("[START]", flush=True)
+    print(f"[START] task={TASK_NAME} env={BENCHMARK} model={MODEL_NAME}", flush=True)
 
     state = env.reset()
     done = False
-    step = 0
 
+    step = 1
+    rewards = []
     total_reward = 0.0
-    steps = 0
 
-    while not done:
-        action = ask_llm(state)
+    try:
+        while not done and step <= MAX_STEPS:
 
-        next_state, reward, done, info = env.step(action)
+            # difficulty visibility (based on symptoms)
+            num_symptoms = len(state["symptoms"])
+            if num_symptoms == 1:
+                difficulty = "easy"
+            elif num_symptoms == 2:
+                difficulty = "medium"
+            else:
+                difficulty = "hard"
 
-        # NORMALIZE REWARD
-        reward = (reward + 3) / 8
-        reward = max(0.0, min(1.0, reward))
+            # get action
+            action = ask_llm(state)
 
-        total_reward += reward
-        steps += 1
+            next_state, reward, done, info = env.step(action)
+
+            # normalize reward → [0,1]
+            reward = (reward + 3) / 8
+            reward = max(0.0, min(1.0, reward))
+
+            rewards.append(reward)
+            total_reward += reward
+
+            done_str = str(done).lower()
+
+            # STRICT STEP FORMAT
+            print(
+                f"[STEP] step={step} action={action} reward={reward:.2f} done={done_str} error=null",
+                flush=True
+            )
+
+            # 🔥 OPTIONAL DEBUG (does NOT break format)
+            selected_dept = action["department"]
+            queue_info = info["queue_status"].get(selected_dept, {})
+
+            print(
+                f"[DEBUG] symptoms={state['symptoms']} difficulty={difficulty} queue={selected_dept}:{queue_info}",
+                flush=True
+            )
+
+            state = next_state
+            step += 1
+
+        # FINAL SCORE
+        steps_taken = len(rewards)
+        score = total_reward / steps_taken if steps_taken > 0 else 0.0
+        score = max(0.0, min(1.0, score))
+
+        success = score >= 0.5
+
+    except Exception as e:
+        print(f"[DEBUG] Runtime error: {e}", flush=True)
+        success = False
+        steps_taken = len(rewards)
+        score = 0.0
+
+    finally:
+        rewards_str = ",".join(f"{r:.2f}" for r in rewards)
 
         print(
-            f"[STEP] step={step} state={state} action={action} reward={reward}",
+            f"[END] success={str(success).lower()} steps={steps_taken} score={score:.2f} rewards={rewards_str}",
             flush=True
         )
 
-        state = next_state
-        step += 1
 
-    score = total_reward / steps if steps > 0 else 0.0
-    score = max(0.0, min(1.0, score))
-
-    print(f"[END] score={score}", flush=True)
-
-
+# RUN
 if __name__ == "__main__":
     run()
 

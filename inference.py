@@ -9,13 +9,18 @@ API_BASE_URL = os.getenv("API_BASE_URL")
 MODEL_NAME = os.getenv("MODEL_NAME")
 API_KEY = os.getenv("HF_TOKEN")
 
-if not API_BASE_URL or not MODEL_NAME or not API_KEY:
-    raise ValueError("Missing required environment variables")
+USE_LLM = True
 
-client = OpenAI(
-    base_url=API_BASE_URL,
-    api_key=API_KEY,
-)
+if not API_BASE_URL or not MODEL_NAME or not API_KEY:
+    print("[WARNING] Missing env vars → using fallback", flush=True)
+    USE_LLM = False
+
+client = None
+if USE_LLM:
+    client = OpenAI(
+        base_url=API_BASE_URL,
+        api_key=API_KEY,
+    )
 
 TASK_NAME = "hospital-triage"
 BENCHMARK = "hospital-env"
@@ -40,7 +45,7 @@ def safe_parse(text):
 
 # FALLBACK POLICY
 def fallback_policy(state):
-    symptoms = " ".join(state["symptoms"]).lower()
+    symptoms = " ".join(state.get("symptoms", [])).lower()
 
     if "unconscious" in symptoms or "severe bleeding" in symptoms:
         return {"department": "emergency", "seriousness": 5}
@@ -62,6 +67,8 @@ def fallback_policy(state):
 
 # LLM DECISION
 def ask_llm(state):
+    if not USE_LLM or client is None:
+        return fallback_policy(state)
     prompt = f"""
     You are a STRICT hospital triage system.
 
@@ -79,7 +86,7 @@ def ask_llm(state):
     5 = critical, 4 = severe, 3 = moderate, 2 = mild
 
     Patient:
-    Symptoms: {state['symptoms']}
+    Symptoms: {state.get('symptoms', [])}
     Age: {state['age']}
     Heart Rate: {state['heart_rate']}
     Blood Pressure: {state['blood_pressure']}
@@ -123,7 +130,7 @@ def run():
         while not done and step <= MAX_STEPS:
 
             # difficulty visibility (based on symptoms)
-            num_symptoms = len(state["symptoms"])
+            num_symptoms = len(state.get("symptoms", []))
             if num_symptoms == 1:
                 difficulty = "easy"
             elif num_symptoms == 2:
@@ -152,8 +159,8 @@ def run():
             )
 
             # 🔥 OPTIONAL DEBUG (does NOT break format)
-            selected_dept = action["department"]
-            queue_info = info["queue_status"].get(selected_dept, {})
+            selected_dept = action.get("department", "general")
+            queue_info = info.get("queue_status", {}).get(selected_dept, {})
 
             print(
                 f"[DEBUG] symptoms={state['symptoms']} difficulty={difficulty} queue={selected_dept}:{queue_info}",
@@ -187,7 +194,11 @@ def run():
 
 # RUN
 if __name__ == "__main__":
-    run()
+    try:
+        run()
+    except Exception as e:
+        print(f"[FATAL] {e}", flush=True)
+        print("[END] success=false steps=0 score=0.00 rewards=", flush=True)
 
     while True:
         time.sleep(60)

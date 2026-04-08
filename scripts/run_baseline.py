@@ -20,9 +20,7 @@ ACTIONS = [(d, s) for d in DEPARTMENTS for s in SERIOUSNESS]
 Q = defaultdict(lambda: [0] * len(ACTIONS))
 
 
-# ==============================
 # STATE ENCODING
-# ==============================
 def state_to_key(state):
     symptoms = tuple(sorted(state["symptoms"]))
 
@@ -38,9 +36,7 @@ def state_to_key(state):
     )
 
 
-# ==============================
 # ACTION SELECTION
-# ==============================
 def choose_action(state, epsilon):
     key = state_to_key(state)
 
@@ -53,9 +49,7 @@ def choose_action(state, epsilon):
     return ACTIONS[action_idx], action_idx
 
 
-# ==============================
 # TRAINING LOOP
-# ==============================
 def train(env, episodes=5000):
 
     alpha = 0.2
@@ -89,7 +83,7 @@ def train(env, episodes=5000):
 
             next_state, reward, done, info = env.step(action_dict)
 
-            # 🔥 IMPORTANT FIX: reward shaping
+            # reward shaping
             if reward < 0:
                 reward *= 1.5
 
@@ -132,9 +126,7 @@ def train(env, episodes=5000):
         )
 
 
-# ==============================
 # TEST FUNCTION
-# ==============================
 def test(env):
     state = env.reset()
     done = False
@@ -215,9 +207,7 @@ def test(env):
     print(f"Overall Accuracy: {total_score/total:.2f}")
 
 
-# ==============================
 # MAIN
-# ==============================
 if __name__ == "__main__":
 
     env = HospitalEnv(task="hard", max_steps=10)
@@ -229,20 +219,17 @@ if __name__ == "__main__":
     test(env)
 
 
-# ==============================
-# RL AGENT (FIXED)
-# ==============================
+# RL AGENT 
 def rl_agent(state):
     key = state_to_key(state)
 
-    # ✅ if seen → use Q
     if key in Q:
         q_values = Q[key]
         best_idx = q_values.index(max(q_values))
         dept, ser = ACTIONS[best_idx]
         return {"department": dept, "seriousness": ser}
 
-    # ✅ fallback rules
+    # fallback rules
     symptoms = " ".join(state.get("symptoms", [])).lower()
 
     if "unconscious" in symptoms or "severe bleeding" in symptoms:
@@ -259,9 +246,7 @@ def rl_agent(state):
     return {"department": "general", "seriousness": 2}
 
 
-# ==============================
 # SAVE / LOAD
-# ==============================
 def save_q_table(filename="q_table.pkl"):
     with open(filename, "wb") as f:
         pickle.dump(dict(Q), f)

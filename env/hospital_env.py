@@ -7,7 +7,8 @@ from env.tasks import (
     hard_task_reward
 )
 
-from collections import defaultdict   # ✅ NEW
+from collections import defaultdict
+import random
 
 
 class HospitalEnv:
@@ -23,13 +24,13 @@ class HospitalEnv:
         self.correct = 0
         self.total = 0
 
-        # 🏥 NEW: department-wise queues
+        # 🏥 Department-wise queues
         self.department_queues = defaultdict(list)
 
-    # RESET ENVIRONMENT
+    # ==============================
+    # 🔄 RESET ENVIRONMENT
+    # ==============================
     def reset(self):
-        import random
-
         self.queue = [generate_patient(self.task) for _ in range(self.max_steps)]
         random.shuffle(self.queue)
 
@@ -37,14 +38,15 @@ class HospitalEnv:
         self.correct = 0
         self.total = 0
 
-        # 🧹 NEW: reset queues
         self.department_queues.clear()
 
         self.patient = self.queue.pop(0)
 
         return self.state()
 
-    # FEATURE ENGINEERING
+    # ==============================
+    # 🧠 FEATURE ENGINEERING
+    # ==============================
     def _compute_risk(self, patient):
         return {
             "high_heart_rate": patient.heart_rate > 120,
@@ -52,36 +54,35 @@ class HospitalEnv:
             "elderly": patient.age > 65
         }
 
-    # CURRENT STATE
+    # ==============================
+    # 📊 CURRENT STATE
+    # ==============================
     def state(self):
         risk = self._compute_risk(self.patient)
 
         return {
             "symptoms": self.patient.symptoms,
-            "age": self.patient.age / 100,  # normalize
+            "age": self.patient.age / 100,          # normalized
             "heart_rate": self.patient.heart_rate / 200,
             "blood_pressure": self.patient.blood_pressure / 200,
 
-            # 🔥 important features
             "risk": risk,
             "difficulty": self.task,
             "progress": self.current_step / self.max_steps
         }
 
-    # VALIDATE ACTION
+    # ==============================
+    # ✅ VALIDATE ACTION
+    # ==============================
     def _validate_action(self, action_dict):
         required_keys = ["seriousness", "department"]
         for key in required_keys:
             if key not in action_dict:
                 raise ValueError(f"Missing key in action: {key}")
 
-    # 🏥 NEW: PROCESS PATIENTS (simulate treatment)
-    def process_patients(self):
-        for dept in self.department_queues:
-        # process only sometimes
-            if self.department_queues[dept] and random.random() < 0.3:
-                self.department_queues[dept].pop(0)
-    # 🏥 NEW: QUEUE STATUS
+    # ==============================
+    # 🏥 GET QUEUE STATUS
+    # ==============================
     def get_queue_status(self):
         status = {}
 
@@ -93,27 +94,60 @@ class HospitalEnv:
 
         return status
 
-    # STEP FUNCTION
+    # ==============================
+    # 🎯 STEP FUNCTION (CORE)
+    # ==============================
     def step(self, action_dict):
         self._validate_action(action_dict)
 
         action = Action(**action_dict)
+        current_patient = self.patient
 
-        # reward
-        reward = self._get_reward(self.patient, action.model_dump())
+        # ==============================
+        # 🧠 BASE REWARD
+        # ==============================
+        reward = self._get_reward(current_patient, action.model_dump())
 
-        if action_dict["department"] == self.patient.department:
+        # ==============================
+        # ✅ Department correctness
+        # ==============================
+        if action_dict["department"] == current_patient.department:
             reward += 1
             self.correct += 1
         else:
             reward -= 1
 
-        self.total += 1
-        self.current_step += 1
+        # ==============================
+        # 🆕 QUEUE CORRECTNESS (BEFORE INSERT)
+        # ==============================
+        queue_info = self.get_queue_status()
+        selected_dept = action_dict["department"]
+        predicted_ser = action_dict["seriousness"]
 
-        current_patient = self.patient
+        queue_correct = False
 
-        # 🏥 NEW: ADD PATIENT TO DEPARTMENT QUEUE
+        if selected_dept in queue_info:
+            existing_levels = queue_info[selected_dept]["seriousness_levels"]
+
+            if len(existing_levels) == 0:
+                queue_correct = True
+            else:
+                avg_severity = sum(existing_levels) / len(existing_levels)
+
+                if predicted_ser >= avg_severity:
+                    queue_correct = True
+        else:
+            queue_correct = True  # new department → valid
+
+        # 🎯 Apply queue reward
+        if queue_correct:
+            reward += 0.5
+        else:
+            reward -= 0.3
+
+        # ==============================
+        # 🏥 ADD PATIENT TO QUEUE
+        # ==============================
         dept = action_dict["department"]
         ser = action_dict["seriousness"]
 
@@ -122,15 +156,21 @@ class HospitalEnv:
             "seriousness": ser
         })
 
-        # 🔥 PRIORITY SORT (highest seriousness first)
+        # 🔥 PRIORITY SORT
         self.department_queues[dept].sort(
             key=lambda x: x["seriousness"],
             reverse=True
         )
 
-        # 🏥 simulate treatment
-        # self.process_patients()
+        # ==============================
+        # 📊 UPDATE COUNTERS
+        # ==============================
+        self.total += 1
+        self.current_step += 1
 
+        # ==============================
+        # 🔄 NEXT STATE
+        # ==============================
         done = (len(self.queue) == 0) or (self.current_step >= self.max_steps)
 
         if not done:
@@ -139,6 +179,9 @@ class HospitalEnv:
         else:
             next_state = None
 
+        # ==============================
+        # 📦 INFO (DEBUG + TRAINING SIGNAL)
+        # ==============================
         info = {
             "task": self.task,
             "true_seriousness": current_patient.true_seriousness,
@@ -147,14 +190,15 @@ class HospitalEnv:
             "accuracy": self.correct / self.total if self.total > 0 else 0,
             "step": self.current_step,
             "reward": reward,
-
-            # 🏥 NEW: queue snapshot
-            "queue_status": self.get_queue_status()
+            "queue_status": self.get_queue_status(),
+            "queue_correct": queue_correct
         }
 
         return next_state, reward, done, info
 
-    # REWARD ROUTER
+    # ==============================
+    # 🧠 REWARD ROUTER
+    # ==============================
     def _get_reward(self, patient, action):
         if self.task == "easy":
             return easy_task_reward(patient, action)

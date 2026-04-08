@@ -62,10 +62,9 @@ class HospitalEnv:
 
         return {
             "symptoms": self.patient.symptoms,
-            "age": self.patient.age / 100,          # normalized
+            "age": self.patient.age / 100,
             "heart_rate": self.patient.heart_rate / 200,
             "blood_pressure": self.patient.blood_pressure / 200,
-
             "risk": risk,
             "difficulty": self.task,
             "progress": self.current_step / self.max_steps
@@ -95,7 +94,7 @@ class HospitalEnv:
         return status
 
     # ==============================
-    # 🎯 STEP FUNCTION (CORE)
+    # 🎯 STEP FUNCTION (CORE LOGIC)
     # ==============================
     def step(self, action_dict):
         self._validate_action(action_dict)
@@ -104,21 +103,49 @@ class HospitalEnv:
         current_patient = self.patient
 
         # ==============================
-        # 🧠 BASE REWARD
+        # 🧠 BASE REWARD FROM TASK
         # ==============================
         reward = self._get_reward(current_patient, action.model_dump())
 
+        step_correct = 0  # ✅ track per-step correctness
+
         # ==============================
-        # ✅ Department correctness
+        # ✅ DEPARTMENT CORRECTNESS
         # ==============================
         if action_dict["department"] == current_patient.department:
             reward += 2
-            self.correct += 2
+            step_correct += 1
         else:
             reward -= 1
 
         # ==============================
-        # 🆕 QUEUE CORRECTNESS (BEFORE INSERT)
+        # ✅ SERIOUSNESS CORRECTNESS (GRADED)
+        # ==============================
+        true_ser = current_patient.true_seriousness
+        pred_ser = action_dict["seriousness"]
+
+        diff = abs(true_ser - pred_ser)
+
+        if diff == 0:
+            reward += 2
+            step_correct += 1
+        elif diff == 1:
+            reward += 1
+        elif diff == 2:
+            reward += 0.3
+        else:
+            reward -= 1
+
+        # 🔥 CRITICAL SAFETY PENALTY
+        if true_ser == 5 and pred_ser <= 2:
+            reward -= 2
+
+        # 🔥 OVERREACTION PENALTY
+        if true_ser <= 2 and pred_ser == 5:
+            reward -= 0.5
+
+        # ==============================
+        # 🏥 QUEUE CORRECTNESS (BEFORE INSERT)
         # ==============================
         queue_info = self.get_queue_status()
         selected_dept = action_dict["department"]
@@ -133,13 +160,12 @@ class HospitalEnv:
                 queue_correct = True
             else:
                 avg_severity = sum(existing_levels) / len(existing_levels)
-
                 if predicted_ser >= avg_severity:
                     queue_correct = True
         else:
-            queue_correct = True  # new department → valid
+            queue_correct = True
 
-        # 🎯 Apply queue reward
+        # 🎯 APPLY QUEUE REWARD
         if queue_correct:
             reward += 0.5
         else:
@@ -156,16 +182,18 @@ class HospitalEnv:
             "seriousness": ser
         })
 
-        # 🔥 PRIORITY SORT
+        # 🔥 SORT BY PRIORITY
         self.department_queues[dept].sort(
             key=lambda x: x["seriousness"],
             reverse=True
         )
 
         # ==============================
-        # 📊 UPDATE COUNTERS
+        # 📊 UPDATE METRICS
         # ==============================
-        self.total += 1
+        self.correct += step_correct
+        self.total += 2  # dept + seriousness
+
         self.current_step += 1
 
         # ==============================
@@ -180,7 +208,7 @@ class HospitalEnv:
             next_state = None
 
         # ==============================
-        # 📦 INFO (DEBUG + TRAINING SIGNAL)
+        # 📦 INFO (FOR TRAINING + DEBUG)
         # ==============================
         info = {
             "task": self.task,

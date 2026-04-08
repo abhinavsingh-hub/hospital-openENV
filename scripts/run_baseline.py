@@ -168,7 +168,6 @@ def test(env):
         state, reward, done, info = env.step(action)
 
         # ✅ NOW PRINT QUEUE (correct position)
-        print("\n🏥 QUEUE STATUS:")
         print("\n🏥 SELECTED DEPARTMENT QUEUE:")
         selected_dept = action["department"]
         q_info = info["queue_status"].get(selected_dept, {

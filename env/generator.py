@@ -15,10 +15,7 @@ SYMPTOMS = [
     "cough"
 ]
 
-
-# =========================================================
-# 🧠 DEPARTMENT DECISION
-# =========================================================
+#  DEPARTMENT DECISION
 def get_department(symptoms):
 
     if isinstance(symptoms, str):
@@ -69,12 +66,10 @@ def get_department(symptoms):
     return max(dept_scores, key=dept_scores.get)
 
 
-# =========================================================
-# 🧠 PATIENT GENERATION
-# =========================================================
+# PATIENT GENERATION
 def generate_patient(task="easy"):
 
-    # 🎯 STEP 1: Symptoms based on difficulty
+    #Symptoms based on difficulty
     if task == "easy":
         symptoms = [random.choice(SYMPTOMS)]
 
@@ -87,14 +82,14 @@ def generate_patient(task="easy"):
     else:
         raise ValueError("Invalid task level")
 
-    # 🔥 FIXED: reduce emergency bias
+    #reduce emergency bias
     if random.random() < 0.1:
         symptoms = ["unconscious"]
 
-    # 🧠 STEP 2: Department
+    #Department
     department = get_department(symptoms)
 
-    # 🎯 STEP 3: Difficulty-based vitals
+    #ifficulty-based vitals
     if task == "easy":
         age = random.randint(20, 50)
         heart_rate = random.randint(60, 100)
@@ -110,12 +105,9 @@ def generate_patient(task="easy"):
         heart_rate = random.randint(60, 150)
         blood_pressure = random.randint(80, 160)
 
-    # =========================================================
-    # 🧠 SERIOUSNESS SCORING
-    # =========================================================
+    #SERIOUSNESS SCORING
     score = 1
 
-    # 🔴 Vitals
     if heart_rate > 120:
         score += 2
     elif heart_rate > 100:
@@ -126,7 +118,6 @@ def generate_patient(task="easy"):
     elif blood_pressure < 100:
         score += 1
 
-    # 🧠 Symptoms
     for symptom in symptoms:
         if symptom in ["unconscious", "severe bleeding"]:
             score += 3
@@ -137,17 +128,15 @@ def generate_patient(task="easy"):
         elif symptom in ["fracture"]:
             score += 1
 
-    # 👶 Age
     if age > 65:
         score += 1
 
     seriousness = min(5, score)
 
-    # 🔥 ALIGNMENT FIX (IMPORTANT)
     if department == "emergency":
         seriousness = max(seriousness, 4)
 
-    # ✅ RETURN AS MODEL (NOT DICT)
+    #RETURN AS MODEL
     return Patient(
         symptoms=symptoms,
         age=age,

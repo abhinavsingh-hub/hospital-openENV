@@ -9,7 +9,6 @@ datas = img.getdata()
 
 newData = []
 for item in datas:
-    # If the pixel is very dark, make it transparent
     if item[0] < 30 and item[1] < 30 and item[2] < 30:
         newData.append((255, 255, 255, 0))
     else:

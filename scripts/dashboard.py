@@ -15,15 +15,6 @@ from scripts.run_baseline import rl_agent, load_q_table
 
 load_q_table()
 
-# from inference import get_action
-# USE_RL = True
-
-
-# if USE_RL:
-#     action = rl_agent(state)
-# else:
-#     action = get_action(state)
-
 # Page Config
 st.set_page_config(
     page_title="AI Hospital Dashboard",
@@ -31,7 +22,7 @@ st.set_page_config(
     layout="wide",
 )
 
-# --- CUSTOM CSS ---
+# CUSTOM CSS
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap');
@@ -153,7 +144,7 @@ if 'env' not in st.session_state:
     st.session_state.queue = []
     st.session_state.latest_reward = 0
 
-# --- SIDEBAR & LOGO ---
+# SIDEBAR & LOGO
 with st.sidebar:
     # Use the transparent logo
     if os.path.exists("assets/logo_transparent.png"):
@@ -177,13 +168,13 @@ with st.sidebar:
     st.markdown("---")
     st.caption("Developed with ❤️ for Medical Excellence.")
 
-# --- HEADER ---
+# HEADER
 header_col1, header_col2 = st.columns([3, 1])
 with header_col1:
     st.title("🏥 Smart Hospital RL Dashboard")
     st.markdown("Optimization of clinical triage and resource allocation using Reinforcement Learning.")
 
-# --- METRIC TILES ---
+# METRIC TILES 
 m_col1, m_col2, m_col3, m_col4 = st.columns(4)
 avg_reward = st.session_state.total_reward / max(1, st.session_state.patients_processed)
 

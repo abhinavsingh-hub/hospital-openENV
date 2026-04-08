@@ -21,7 +21,7 @@ st.set_page_config(
     layout="wide",
 )
 
-# --- CUSTOM CSS ---
+# CSS   
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap');
@@ -144,7 +144,7 @@ if 'env' not in st.session_state:
     st.session_state.queue = []
     st.session_state.latest_reward = 0
 
-# --- SIDEBAR & LOGO ---
+# SIDEBAR & LOGO
 with st.sidebar:
     # Use the transparent logo
     if os.path.exists("assets/logo_transparent.png"):
@@ -168,13 +168,13 @@ with st.sidebar:
     st.markdown("---")
     st.caption("Developed with ❤️ for Medical Excellence.")
 
-# --- HEADER ---
+# HEADER
 header_col1, header_col2 = st.columns([3, 1])
 with header_col1:
     st.title("🏥 Smart Hospital RL Dashboard")
     st.markdown("Optimization of clinical triage and resource allocation using Reinforcement Learning.")
 
-# --- METRIC TILES ---
+# METRIC TILES
 m_col1, m_col2, m_col3, m_col4 = st.columns(4)
 avg_reward = st.session_state.total_reward / max(1, st.session_state.patients_processed)
 
@@ -188,7 +188,7 @@ with m_col4:
     throughput = st.session_state.patients_processed / max(1, len(st.session_state.history))
     st.markdown(f'<div class="glass-card"><div class="metric-label">Throughput / Batch</div><div class="metric-value">{throughput:.1f}</div></div>', unsafe_allow_html=True)
 
-# --- MAIN LAYOUT ---
+# MAIN LAYOUT
 left_col, right_col = st.columns([1, 2], gap="large")
 
 with left_col:

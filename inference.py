@@ -4,9 +4,7 @@ import time
 from openai import OpenAI
 from env.hospital_env import HospitalEnv
 
-# ==============================
-# 🔑 Setup client
-# ==============================
+# Setup client
 base_url = os.getenv("API_BASE_URL")
 api_key = os.getenv("HF_TOKEN")
 
@@ -21,14 +19,11 @@ client = OpenAI(
 MODEL_NAME = os.getenv("MODEL_NAME")
 
 
-# ==============================
-# 🧠 Safe JSON extraction
-# ==============================
+# JSON extraction
 def safe_parse(text):
     try:
         return json.loads(text)
     except:
-        # try extracting JSON block
         try:
             start = text.find("{")
             end = text.rfind("}") + 1
@@ -40,9 +35,7 @@ def safe_parse(text):
             }
 
 
-# ==============================
-# 🧠 FALLBACK POLICY
-# ==============================
+# FALLBACK POLICY
 def fallback_policy(state):
     symptoms = " ".join(state["symptoms"]).lower()
 
@@ -64,9 +57,7 @@ def fallback_policy(state):
     return {"department": "general", "seriousness": 2}
 
 
-# ==============================
-# 🤖 LLM decision
-# ==============================
+# LLM decision
 def ask_llm(state):
     prompt = f"""
     You are a STRICT hospital triage system.
@@ -124,9 +115,7 @@ def ask_llm(state):
         return fallback_policy(state)
 
 
-# ==============================
-# 🚀 MAIN LOOP
-# ==============================
+# MAIN LOOP
 def run():
     env = HospitalEnv(task="hard", max_steps=10)
 
@@ -144,10 +133,7 @@ def run():
 
         next_state, reward, done, info = env.step(action)
 
-        # ==========================
-        # 🔥 NORMALIZE REWARD (CRITICAL)
-        # ==========================
-        # your env gives roughly -3 → +5
+        # NORMALIZE REWARD
         reward = (reward + 3) / 8
         reward = max(0.0, min(1.0, reward))
 
@@ -162,21 +148,14 @@ def run():
         state = next_state
         step += 1
 
-    # ==========================
-    # 🏁 FINAL SCORE
-    # ==========================
     score = total_reward / steps if steps > 0 else 0.0
     score = max(0.0, min(1.0, score))
 
     print(f"[END] score={score}", flush=True)
 
 
-# ==============================
-# ENTRY
-# ==============================
 if __name__ == "__main__":
     run()
 
-    # keep container alive for HF
     while True:
         time.sleep(60)

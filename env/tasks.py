@@ -1,22 +1,22 @@
-# 🟢 EASY → department only (but better signal)
+# EASY → department only
 def easy_task_reward(patient, action):
     if action["department"] == patient.department:
         return 1
     else:
-        return -0.5  # ❗ penalize wrong
+        return -0.5  # penalize wrong
 
 
-# 🟡 MEDIUM → department + seriousness (with closeness)
+# MEDIUM → department + seriousness
 def medium_task_reward(patient, action):
     reward = 0
 
-    # ✅ Department (important)
+    # Department
     if action["department"] == patient.department:
         reward += 1
     else:
         reward -= 0.5
 
-    # ✅ Seriousness (graded reward)
+    # Seriousness 
     true = patient.true_seriousness
     pred = action["seriousness"]
 
@@ -34,20 +34,20 @@ def medium_task_reward(patient, action):
     return reward
 
 
-# 🔴 HARD → full intelligent reward
+# HARD → full intelligent reward
 def hard_task_reward(patient, action):
     reward = 0
 
     true = patient.true_seriousness
     pred = action["seriousness"]
 
-    # ✅ Department
+    # Department
     if action["department"] == patient.department:
         reward += 1
     else:
         reward -= 1  # stronger penalty
 
-    # ✅ Seriousness (graded)
+    # Seriousness (graded)
     diff = abs(true - pred)
 
     if diff == 0:
@@ -59,16 +59,15 @@ def hard_task_reward(patient, action):
     else:
         reward -= 1
 
-    # 🔥 CRITICAL SAFETY LOGIC (VERY IMPORTANT)
     # Missed emergency
     if true == 5 and pred <= 2:
         reward -= 2
 
-    # Overreaction penalty (optional realism)
+    # Overreaction penalty 
     if true <= 2 and pred == 5:
         reward -= 0.5
 
-    # 🔥 Risk-based bonus (use vitals indirectly)
+    # Risk-based bonus 
     if patient.heart_rate > 120 and pred >= 4:
         reward += 0.3
 

@@ -1,35 +1,3 @@
-# from fastapi import FastAPI
-# from env.hospital_env import HospitalEnv
-# import uvicorn
-
-# app = FastAPI()
-
-# env = HospitalEnv(task="easy", max_steps=1)
-
-
-# @app.get("/")
-# def home():
-#     return {
-#         "message": "Smart Hospital OpenEnv is running 🚀",
-#         "endpoint": "/reset"
-#     }
-
-
-# @app.post("/reset")
-# def reset():
-#     state = env.reset()
-#     return {"state": state}
-
-
-# # 🔥 REQUIRED for OpenEnv
-# def main():
-#     uvicorn.run(app, host="0.0.0.0", port=7860)
-
-
-# # 🔥 REQUIRED ENTRYPOINT
-# if __name__ == "__main__":
-#     main()
-
 from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
 from env.hospital_env import HospitalEnv
@@ -49,8 +17,8 @@ def home():
         <head>
             <title>Smart Hospital Demo</title>
         </head>
-        <body style="font-family: Arial; padding: 20px;">
-            <h1>🏥 Smart Hospital RL Environment</h1>
+        <body style="font-family: Arial; padding: 20px; text-align: center;">
+            <h1>Smart Hospital RL Environment 🏥</h1>
             <p>Interactive triage simulation</p>
 
             <button onclick="runDemo()">▶️ Run Simulation</button>

@@ -30,152 +30,124 @@ Current systems rely heavily on static triage protocols, which struggle under dy
 
 ---
 
-### 💡 Our Approach
+## 🏗️ System Architecture
 
-We model hospital triage as a sequential decision-making problem, where an agent must:
+Our system follows a modular architecture where an RL environment interacts with an AI-driven policy, visualized through multiple dashboard layers.
 
-- Assign patients to the correct department
-- Estimate urgency (seriousness)
-- Balance risk vs resource utilization
-- Handle multi-symptom ambiguity
-- Avoid critical misclassification penalties
+```mermaid
+graph TD
+    User([User]) --> Dashboard[Streamlit / FastAPI UI]
+    Dashboard --> Server[FastAPI Server]
+    Server --> Env[HospitalEnv]
+    
+    subgraph "Logic Layer"
+        Env --> State[Observation: Patient Vitals & Symptoms]
+        State --> Agent[LLM Policy / Inference]
+        Agent --> Action[Action: Dept & Seriousness]
+        Action --> Env
+    end
+    
+    subgraph "Feedback Loop"
+        Env --> Reward[Reward Calculation]
+        Reward --> Dashboard
+        Env --> Queue[Queue Management Stats]
+        Queue --> Dashboard
+    end
+```
 
 ---
-
-### 🧠 Why Reinforcement Learning?
-
-This is not just classification.
-
-Agents must optimize:
-
-- Long-term reward across multiple patients
-- Trade-offs between accuracy and safety
-- Risk-sensitive decisions (e.g., missing emergencies)
-- Performance under distribution shifts (easy → hard tasks)
-
-This makes RL a natural fit for:
-
-- Adaptive triage policies
-- Robust decision-making under uncertainty
-- Learning from simulated clinical environments
-
-----
 
 ## ⚙️ Environment Design
 
 ###  Observation Space
-- Symptoms (multi-label)
-- Age and vitals (normalized)
-- Risk indicators (derived features)
-- Task difficulty and progression
+The observation space is a dictionary containing normalized patient data:
+- **`symptoms`**: List of strings (e.g., `["chest pain", "shortness of breath"]`)
+- **`age`**: Patient age (normalized 0.0 - 1.0)
+- **`heart_rate`**: BPM (normalized 0.0 - 1.0)
+- **`blood_pressure`**: Systolic BP (normalized 0.0 - 1.0)
+- **`risk`**: Dictionary of binary indicators (`high_heart_rate`, `low_blood_pressure`, `elderly`)
+- **`progress`**: Completion percentage of the current task (0.0 - 1.0)
 
 ###  Action Space
-- Department selection (6 specialties)
-- Seriousness level (1–5)
+The agent must provide a dictionary containing:
+- **`department`**: One of `["cardiology", "neurology", "orthopedics", "pulmonology", "general", "emergency"]`
+- **`seriousness`**: Integer scale from `1` (mild) to `5` (critical)
 
 ###  Reward System
-- Partial credit for near-correct decisions
-- Heavy penalties for critical misclassification
-- Risk-aware shaping based on vitals and age
+- **Base Reward**: Graded score based on True Seriousness vs. Predicted Seriousness.
+- **Department Bonus**: `+2.0` for correct specialty assignment.
+- **Safety Penalty**: `-2.0` if a critical patient (Seriousness 4+) is assigned low priority (2 or less).
+- **Efficiency Bonus**: `+0.5` for maintaining correct queue priority.
 
 ---
 
 ## 📊 Tasks
 
-| Task   | Objective                              |
-|--------|----------------------------------------|
-| Easy   | Department prediction                  |
-| Medium | Department + seriousness               |
-| Hard   | Full triage with risk-aware penalties  |
+| Task   | difficulty | Description                                      |
+|--------|------------|--------------------------------------------------|
+| Easy   | easy       | Department prediction only                       |
+| Medium | medium     | Unified Department + Seriousness prediction      |
+| Hard   | hard       | Full triage with extreme risk-aware penalties    |
 
 ---
-
-## 🤖 Baseline Agent
-
-We provide a hybrid agent combining:
-
-- Rule-based medical priors  
-- LLM-based reasoning  
-- Fallback safety policies  
-
-This ensures robustness even under API or model failures.
-
----
-
-## 🧪 Evaluation
-
-Agents are evaluated on:
-
-- Accuracy across tasks  
-- Risk-sensitive decision quality  
-- Stability under uncertainty  
-- Final normalized score (0–1)  
-
-
-## 🌍 Real-World Impact
-
-This system is designed as a **decision-support layer**, not a replacement for clinicians.
-
-### Potential Applications:
-- Emergency triage assistance  
-- Hospital load balancing simulations  
-- Training environments for AI in healthcare  
-- Stress-testing healthcare policies under demand spikes  
-
----
-
-## 🛠️ Technologies Used
-
-- **[Streamlit](https://streamlit.io/)**: For building the premium, glassmorphic dashboard UI.
-- **[Python](https://www.python.org/)**: The engine behind the simulation and RL environment.
-- **[Pydantic](https://docs.pydantic.dev/)**: Ensuring robust data validation for patients and agent actions.
-- **[Pandas](https://pandas.pydata.org/)**: Handling time-series data for metrics and activity logging.
-
-## 🏗️ Project Structure
-
-- `env/`: Contains the core RL environment logic (`hospital_env.py`), data models (`models.py`), and reward functions (`rewards.py`).
-- `scripts/`:
-    - `dashboard.py`: The interactive Streamlit dashboard.
-    - `run_baseline.py`: CLI-based baseline agent execution.
-- `data/`: Sample patient datasets (`patients.json`).
 
 ## 🚦 How to Run
 
 ### 1. Install Dependencies
+Ensure you have Python 3.9+ installed, then run:
 ```bash
-python3 -m pip install streamlit pydantic pandas
+python3 -m pip install -r requirements.txt
 ```
 
-### 2. Launch the Dashboard
+### 2. Launch the Development Server (FastAPI)
+The backend server handles the RL environment and LLM bridge:
 ```bash
-streamlit run scripts/dashboard.py
+python3 server/app.py
 ```
-### 3. Launch on CLI
-```bash
-.venv/bin/python -m scripts.run_baseline
-```
-## 🧠 Dashboard Core Panels
+Accessibility: `http://localhost:7860`
 
-- **🏥 Hospital State**: Live view of bed availability, staff allocation progress, and the current patient queue.
-- **🤖 Agent Decisions**: Instant feedback on the agent's latest action, comparing its choice with the ground truth outcome.
-- **📊 Real-time Metrics**: Tracking Total Reward, Avg Reward, and System Throughput.
-- **🎮 Controls**: Step-by-step simulation or full episode automation.
+### 3. Launch the Streamlit Dashboard (Alternative)
+For a heavy diagnostic visualization:
+```bash
+streamlit run streamlit_app.py
+```
+
+### 4. Run CLI Baseline
+To test the inference logic directly via terminal:
+```bash
+python3 inference.py
+```
 
 ---
 
-## Hugging-Face link 
+## 🏗️ Project Structure
 
-https://huggingface.co/spaces/abhinavvsingh/vaats
-
-## Docker container ID 
-
-e33b36d2810c3201754dc48d92c8c9eb1d08fe7b8c2f82a1d56ff5be57bfbcac
-
-## UI Preview (Draft)
-<img width="1512" height="858" alt="Screenshot 2026-04-05 at 5 25 47 AM" src="https://github.com/user-attachments/assets/320e6b44-ee41-4d71-8a65-f5d4e812b7c1" />
-
-
-
+- `env/`:
+  - `hospital_env.py`: Core Gymnasium-like environment logic.
+  - `models.py`: Pydantic schemas for Patients and Actions.
+  - `generator.py`: Synthetic patient data generated based on medical priors.
+- `server/`:
+  - `app.py`: FastAPI implementation of the web dashboard.
+- `inference.py`: Hybrid AI policy (LLM + Rule-based fallback).
+- `openenv.yaml`: Standard environment specification metadata.
 
 ---
-Built with ❤️ for AI research and hospital efficiency.
+
+## 🌍 Real-World Impact
+
+This system is designed as a **decision-support layer**, not a replacement for clinicians. It helps in:
+- Emergency department triage simulations
+- Hospital load balancing under demand spikes
+- Stress-testing AI robustness in high-stakes clinical settings
+
+---
+
+## Hugging-Face Link 
+[Hospital Triage OpenEnv on HF](https://huggingface.co/spaces/abhinavvsingh/vaats)
+
+## UI Preview
+<img width="1512" height="858" alt="Dashboard Preview" src="https://github.com/user-attachments/assets/320e6b44-ee41-4d71-8a65-f5d4e812b7c1" />
+
+---
+Built with ❤️ for AI research and healthcare efficiency.
+

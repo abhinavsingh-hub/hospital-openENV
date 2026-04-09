@@ -4,7 +4,9 @@ import time
 from openai import OpenAI
 from env.hospital_env import HospitalEnv
 
-#  ENV SETUP
+# ==============================
+# 🔐 ENV SETUP
+# ==============================
 API_BASE_URL = os.getenv("API_BASE_URL")
 MODEL_NAME = os.getenv("MODEL_NAME")
 API_KEY = os.getenv("HF_TOKEN")
@@ -20,9 +22,11 @@ if USE_LLM:
 
 TASK_NAME = "hospital-triage"
 BENCHMARK = "hospital-env"
-MAX_STEPS = 5  # optimized
+MAX_STEPS = 5  # optimized for speed
 
-#  SAFE PARSE
+# ==============================
+# 🧠 SAFE PARSE
+# ==============================
 def safe_parse(text):
     try:
         return json.loads(text)
@@ -34,7 +38,39 @@ def safe_parse(text):
         except:
             return fallback_policy({})
 
-#  FALLBACK POLICY
+# ==============================
+# 🛠 NORMALIZE ACTION (CRITICAL FIX)
+# ==============================
+def normalize_action(action):
+    try:
+        dept = action.get("department", "").lower().strip()
+
+        allowed = {
+            "cardiology",
+            "neurology",
+            "orthopedics",
+            "pulmonology",
+            "general",
+            "emergency"
+        }
+
+        if dept not in allowed:
+            return fallback_policy({})
+
+        seriousness = int(action.get("seriousness", 3))
+        seriousness = max(1, min(5, seriousness))
+
+        return {
+            "department": dept,
+            "seriousness": seriousness
+        }
+
+    except:
+        return fallback_policy({})
+
+# ==============================
+# 🛟 FALLBACK POLICY
+# ==============================
 def fallback_policy(state):
     symptoms = " ".join(state.get("symptoms", [])).lower()
 
@@ -55,8 +91,9 @@ def fallback_policy(state):
 
     return {"department": "general", "seriousness": 2}
 
-#  LLM DECISION (REASONING-FIRST)
-
+# ==============================
+# 🤖 LLM DECISION (REASONING-FIRST)
+# ==============================
 def ask_llm(state):
     if not USE_LLM or client is None:
         return fallback_policy(state)
@@ -73,18 +110,18 @@ Your task:
 - Assign correct department
 - Assign seriousness (1–5)
 
-GUIDELINES (use reasoning, not strict mapping):
+GUIDELINES:
 - Emergency: life-threatening (unconscious, severe bleeding)
 - Cardiology: chest-related symptoms
 - Pulmonology: breathing issues
-- Neurology: brain-related symptoms (dizziness, head injury)
+- Neurology: brain-related symptoms
 - Orthopedics: bone injuries
 - General: mild or unclear cases
 
 IMPORTANT:
-- Use medical reasoning for unseen symptoms
-- Consider combinations of symptoms
-- Consider severity using vitals and age
+- Use reasoning for unseen symptoms
+- Consider combinations
+- Use vitals and age for severity
 
 Seriousness:
 1–2 → mild
@@ -109,17 +146,19 @@ Return ONLY JSON:
             model=MODEL_NAME,
             messages=[{"role": "user", "content": prompt}],
             temperature=0,
-            timeout=5  # 🔥 critical for validator
+            timeout=5  # 🔥 critical
         )
 
         text = (response.choices[0].message.content or "").strip()
-        return safe_parse(text)
+        return normalize_action(safe_parse(text))
 
     except Exception as e:
         print(f"[DEBUG] LLM error: {e}", flush=True)
         return fallback_policy(state)
 
-#  MAIN LOOP
+# ==============================
+# 🚀 MAIN LOOP
+# ==============================
 def run():
     env = HospitalEnv(task="hard", max_steps=MAX_STEPS)
 
@@ -133,12 +172,12 @@ def run():
     total_reward = 0.0
 
     start_time = time.time()
-    MAX_RUNTIME = 30  # 🔥 safety cap
+    MAX_RUNTIME = 30  # safety cap
 
     try:
         while not done and step <= MAX_STEPS:
 
-            # global timeout protection
+            # ⏱ global timeout
             if time.time() - start_time > MAX_RUNTIME:
                 print("[DEBUG] Global timeout reached", flush=True)
                 break
@@ -162,7 +201,7 @@ def run():
                 flush=True
             )
 
-            # safe debug
+            # debug info (safe)
             selected_dept = action.get("department", "general")
             queue_info = info.get("queue_status", {}).get(selected_dept, {})
 
@@ -188,10 +227,12 @@ def run():
         score = 0.0
 
     finally:
-        try:
-            env.close()
-        except Exception as e:
-            print(f"[DEBUG] env.close error: {e}", flush=True)
+        # safe close
+        if hasattr(env, "close"):
+            try:
+                env.close()
+            except Exception as e:
+                print(f"[DEBUG] env.close error: {e}", flush=True)
 
         rewards_str = ",".join(f"{r:.2f}" for r in rewards)
 
@@ -200,7 +241,9 @@ def run():
             flush=True
         )
 
-#  ENTRY
+# ==============================
+# ▶️ ENTRY
+# ==============================
 if __name__ == "__main__":
     try:
         run()
@@ -208,5 +251,6 @@ if __name__ == "__main__":
         print(f"[FATAL] {e}", flush=True)
         print("[END] success=false steps=0 score=0.000 rewards=", flush=True)
 
+    # keep container alive (HF requirement)
     while True:
         time.sleep(60)

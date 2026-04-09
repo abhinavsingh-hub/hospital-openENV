@@ -1,11 +1,12 @@
 from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
 from env.hospital_env import HospitalEnv
-import uvicorn
-import random
-from inference import ask_llm 
+from inference import ask_llm
+import threading
+import subprocess
 
 app = FastAPI()
+
 
 
 # HOME UI
@@ -36,44 +37,50 @@ def home():
     """
 
 
-# RESET (validator)
 @app.post("/reset")
 def reset():
     env = HospitalEnv(task="easy", max_steps=1)
-    state = env.reset()
-    return {"state": state}
+    return {"state": env.reset()}
 
 
-# DEMO SIMULATION
 @app.get("/demo")
 def demo():
-    env = HospitalEnv(task="hard", max_steps=5)
+    env = HospitalEnv(task="easy", max_steps=5)
     state = env.reset()
 
     steps = []
 
-    for step in range(5):
-        action = ask_llm(state)   # 🔥 USE LLM HERE
-
-        next_state, reward, done, info = env.step(action)
+    for _ in range(5):
+        action = ask_llm(state)
+        state, reward, done, _ = env.step(action)
 
         steps.append({
-            "step": step,
-            "state": state,
             "action": action,
             "reward": reward
         })
 
-        state = next_state
         if done:
             break
 
     return {"simulation": steps}
 
 
-# ENTRYPOINT (required)
+def run_inference():
+    try:
+        subprocess.run(["python", "inference.py"], check=True)
+    except Exception as e:
+        print(f"[SERVER ERROR] {e}")
+
+
+@app.on_event("startup")
+def startup_event():
+    thread = threading.Thread(target=run_inference)
+    thread.start()
+
+
 def main():
-    return app
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=7860)
 
 
 if __name__ == "__main__":

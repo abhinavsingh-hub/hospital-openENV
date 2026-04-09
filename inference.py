@@ -4,9 +4,7 @@ import json
 from openai import OpenAI
 from env.hospital_env import HospitalEnv
 
-# ==============================
-# 🔇 STRICT LOG CONTROL
-# ==============================
+
 old_stdout = sys.stdout
 sys.stdout = sys.stderr
 
@@ -24,9 +22,7 @@ def log_end(success, steps, score, rewards):
     rewards_str = ",".join([f"{r:.2f}" for r in rewards])
     print_log(f"[END] success={str(success).lower()} steps={steps} score={score:.3f} rewards={rewards_str}")
 
-# ==============================
-# 🔐 ENV SETUP
-# ==============================
+
 API_BASE_URL = os.getenv("API_BASE_URL", "https://router.huggingface.co/v1")
 MODEL_NAME = os.getenv("MODEL_NAME", "openai/gpt-oss-120b:groq")
 API_KEY = os.getenv("HF_TOKEN")
@@ -40,13 +36,12 @@ if USE_LLM:
     except:
         USE_LLM = False
 
-# ==============================
-# 🧠 RULE-BASED POLICY (IMPROVED)
-# ==============================
+# RULE-BASED POLICY 
+
 def fallback_policy(state):
     symptoms = " ".join(state.get("symptoms", [])).lower()
 
-    # 🚨 TRUE emergencies only
+    # TRUE emergencies only
     if "unconscious" in symptoms or "severe bleeding" in symptoms:
         return {"department": "emergency", "seriousness": 5}
 
@@ -68,9 +63,8 @@ def fallback_policy(state):
 
     return {"department": "general", "seriousness": 2}
 
-# ==============================
-# 🧠 SAFE PARSE
-# ==============================
+# SAFE PARSE
+
 def safe_parse(text):
     try:
         return json.loads(text)
@@ -97,9 +91,8 @@ def normalize_action(action):
     except:
         return fallback_policy({})
 
-# ==============================
-# 🤖 LLM DECISION (LESS EMERGENCY BIAS)
-# ==============================
+# LLM DECISION 
+
 def ask_llm(state):
     if not USE_LLM or client is None:
         return fallback_policy(state)
@@ -159,9 +152,8 @@ Return ONLY JSON:
     except Exception:
         return fallback_policy(state)
 
-# ==============================
-# 🚀 MAIN LOOP
-# ==============================
+#  MAIN LOOP
+
 def run_inference():
 
     tasks = ["easy", "medium", "hard"]
@@ -199,19 +191,15 @@ def run_inference():
         except Exception:
             done = True
 
-        # ✅ CORRECT SCORE
         steps_taken = len(rewards)
         score = total_reward / steps_taken if steps_taken > 0 else 0.0
         score = max(0.001, min(0.999, score))
 
-        # ✅ CORRECT SUCCESS
         success = score >= 0.5
 
         log_end(success, steps_taken, score, rewards)
 
-# ==============================
-# ▶️ ENTRY
-# ==============================
+# ENTRY
 if __name__ == "__main__":
     try:
         run_inference()
